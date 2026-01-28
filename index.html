@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大學課堂表現紀錄系統 v2.0</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #c0392b;
+            --light-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background-color: var(--light-bg);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 { text-align: center; color: var(--primary-color); margin-bottom: 20px; }
+
+        /* Navigation Tabs */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 15px;
+            font-weight: bold;
+            color: #7f8c8d;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--accent-color);
+            border-bottom: 3px solid var(--accent-color);
+        }
+
+        .tab-btn:hover { background-color: #f1f1f1; }
+
+        /* Panels */
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: #eee;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        input[type="date"] {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button.action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            margin-right: 5px;
+            transition: opacity 0.2s;
+        }
+
+        button.action-btn:hover { opacity: 0.9; }
+        button.action-btn:active { transform: scale(0.98); }
+
+        .btn-part { background-color: var(--success-color); }
+        .btn-q { background-color: var(--accent-color); }
+        .btn-c { background-color: var(--warning-color); }
+        .btn-r { background-color: var(--danger-color); }
+        .btn-export { background-color: #2c3e50; float: right;}
+        .btn-clear { background-color: #7f8c8d; }
+        .btn-delete { background-color: #c0392b; font-size: 0.8em; padding: 5px 10px;}
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        tr:hover { background-color: #f1f1f1; }
+
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 100; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; 
+            padding: 20px;
+            border: 1px solid #888;
+            width: 400px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-confirm { background-color: var(--success-color); color: white; padding: 10px 20px; border:none; border-radius: 4px; cursor: pointer; font-size: 16px;}
+        .btn-cancel { background-color: #95a5a6; color: white; padding: 10px 20px; border:none; border-radius: 4px; cursor: pointer; font-size: 16px;}
+
+        /* Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 16px;
+            position: fixed;
+            z-index: 101;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 17px;
+        }
+
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>課堂紀錄與統計系統 v2.0</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('record')">📝 課堂紀錄 (Record)</button>
+        <button class="tab-btn" onclick="switchTab('history')">📜 歷史與修改 (History)</button>
+        <button class="tab-btn" onclick="switchTab('stats')">📊 統計數據 (Stats)</button>
+        <button class="tab-btn" onclick="switchTab('settings')" style="margin-left: auto;">⚙️ 設定</button>
+    </div>
+
+    <div id="record-panel" class="panel active">
+        <div class="controls">
+            <div>
+                <label for="recordDate"><strong>紀錄日期：</strong></label>
+                <input type="date" id="recordDate">
+            </div>
+            <span style="font-size: 0.9em; color: #666;">點擊後需確認才會儲存</span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 15%">學號</th>
+                    <th style="width: 20%">姓名</th>
+                    <th style="width: 25%">課堂表現</th>
+                    <th style="width: 40%">預習功課 (Outstanding Pre-lesson)</th>
+                </tr>
+            </thead>
+            <tbody id="studentTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="history-panel" class="panel">
+        <div class="controls">
+            <h3>歷史紀錄一覽 (按時間排序)</h3>
+            <span style="font-size:0.9em; color: #666;">若紀錄錯誤，請點擊右側「刪除」按鈕</span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>學號</th>
+                    <th>姓名</th>
+                    <th>範疇</th>
+                    <th>細項</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="stats-panel" class="panel">
+        <div class="controls">
+            <h3>總計一覽表</h3>
+            <button class="action-btn btn-export" onclick="exportCSV()">📥 下載 CSV 報表</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>學號</th>
+                    <th>姓名</th>
+                    <th onclick="sortTable(2)" style="cursor:pointer">課堂表現 (次數) ↕</th>
+                    <th onclick="sortTable(3)" style="cursor:pointer">Pre-Task: Q ↕</th>
+                    <th onclick="sortTable(4)" style="cursor:pointer">Pre-Task: C ↕</th>
+                    <th onclick="sortTable(5)" style="cursor:pointer">Pre-Task: R ↕</th>
+                    <th onclick="sortTable(6)" style="cursor:pointer">總計次數 ↕</th>
+                </tr>
+            </thead>
+            <tbody id="statsTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="settings-panel" class="panel">
+        <h3>學生名單管理</h3>
+        <p>請輸入學生名單 (格式：學號,姓名)，每行一位學生。</p>
+        <textarea id="studentInput" rows="10" style="width: 100%; padding: 10px; border:1px solid #ccc;">
+1001,陳大文
+1002,李小明
+1003,張志強
+1004,王美玲
+1005,何國榮
+</textarea>
+        <br><br>
+        <button class="action-btn btn-q" onclick="saveStudentList()">更新學生名單</button>
+        <hr>
+        <h3>資料維護</h3>
+        <button class="action-btn btn-clear" onclick="clearAllData()">⚠️ 清除所有紀錄</button>
+    </div>
+</div>
+
+<div id="confirmModal" class="modal">
+    <div class="modal-content">
+        <h2 style="margin-top:0;">確認紀錄</h2>
+        <p style="font-size: 1.1em; line-height: 1.6;">
+            學生：<strong id="modal-student-name" style="color:var(--primary-color)"></strong><br>
+            範疇：<span id="modal-category"></span><br>
+            細項：<strong id="modal-type" style="color:var(--accent-color)"></strong><br>
+            日期：<span id="modal-date"></span>
+        </p>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal()">取消 (Esc)</button>
+            <button class="btn-confirm" onclick="confirmAddRecord()" id="btn-confirm-final">確認輸入 (Enter)</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast">紀錄已更新！</div>
+
+<script>
+    // --- Initial Data & State ---
+    let students = [];
+    let records = [];
+    
+    // Staging data for the modal
+    let pendingRecord = null;
+
+    window.onload = function() {
+        document.getElementById('recordDate').valueAsDate = new Date();
+        loadData();
+        renderRecordingTable();
+        
+        // Add keyboard listener for modal
+        document.addEventListener('keydown', function(event) {
+            const modal = document.getElementById('confirmModal');
+            if (modal.style.display === "block") {
+                if (event.key === "Enter") {
+                    confirmAddRecord();
+                } else if (event.key === "Escape") {
+                    closeModal();
+                }
+            }
+        });
+    };
+
+    // --- Core Functions ---
+    function loadData() {
+        const storedStudents = localStorage.getItem('uni_tracker_students');
+        if (storedStudents) {
+            students = JSON.parse(storedStudents);
+            let textList = students.map(s => `${s.id},${s.name}`).join('\n');
+            document.getElementById('studentInput').value = textList;
+        } else {
+            saveStudentList(false); 
+        }
+
+        const storedRecords = localStorage.getItem('uni_tracker_records');
+        if (storedRecords) {
+            records = JSON.parse(storedRecords);
+        }
+    }
+
+    function saveStudentList(showAlert = true) {
+        const input = document.getElementById('studentInput').value;
+        const lines = input.split('\n');
+        const newStudents = [];
+        lines.forEach(line => {
+            if(line.trim() !== "") {
+                const parts = line.split(',');
+                if(parts.length >= 2) {
+                    newStudents.push({ id: parts[0].trim(), name: parts[1].trim() });
+                }
+            }
+        });
+        students = newStudents;
+        localStorage.setItem('uni_tracker_students', JSON.stringify(students));
+        if(showAlert) {
+            alert('學生名單已更新！');
+            renderRecordingTable();
+        }
+    }
+
+    // --- New Workflow: Open Modal -> Confirm -> Save ---
+    
+    function openConfirmModal(studentId, category, type) {
+        const date = document.getElementById('recordDate').value;
+        if (!date) { alert("請選擇日期！"); return; }
+        
+        const student = students.find(s => s.id === studentId);
+        
+        // Store pending data
+        pendingRecord = {
+            id: Date.now(),
+            studentId: studentId,
+            studentName: student.name, // caching name for ease
+            date: date,
+            category: category,
+            type: type
+        };
+
+        // UI Update
+        document.getElementById('modal-student-name').innerText = student.name + " (" + student.id + ")";
+        document.getElementById('modal-category').innerText = category === 'Participation' ? '課堂表現' : '預習功課 (Pre-Task)';
+        document.getElementById('modal-type').innerText = type === 'Correct' ? '回答正確' : type;
+        document.getElementById('modal-date').innerText = date;
+
+        document.getElementById('confirmModal').style.display = "block";
+        document.getElementById('btn-confirm-final').focus(); // Auto focus on confirm button
+    }
+
+    function closeModal() {
+        document.getElementById('confirmModal').style.display = "none";
+        pendingRecord = null;
+    }
+
+    function confirmAddRecord() {
+        if (!pendingRecord) return;
+
+        records.push(pendingRecord);
+        localStorage.setItem('uni_tracker_records', JSON.stringify(records));
+        
+        showToast(`✅ 已紀錄：${pendingRecord.studentName} - ${pendingRecord.type}`);
+        closeModal();
+    }
+
+    function deleteRecord(recordId) {
+        if(confirm("確定要刪除這條紀錄嗎？")) {
+            records = records.filter(r => r.id !== recordId);
+            localStorage.setItem('uni_tracker_records', JSON.stringify(records));
+            renderHistoryTable(); // Refresh history view
+            showToast("🗑️ 紀錄已刪除");
+        }
+    }
+
+    // --- Rendering ---
+    function renderRecordingTable() {
+        const tbody = document.getElementById('studentTableBody');
+        tbody.innerHTML = '';
+        students.forEach(student => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${student.id}</td>
+                <td><strong>${student.name}</strong></td>
+                <td><button class="action-btn btn-part" onclick="openConfirmModal('${student.id}', 'Participation', 'Correct')">✅ 回答正確</button></td>
+                <td>
+                    <button class="action-btn btn-q" onclick="openConfirmModal('${student.id}', 'PreTask', 'Q')">Q</button>
+                    <button class="action-btn btn-c" onclick="openConfirmModal('${student.id}', 'PreTask', 'C')">C</button>
+                    <button class="action-btn btn-r" onclick="openConfirmModal('${student.id}', 'PreTask', 'R')">R</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderStatsTable() {
+        const tbody = document.getElementById('statsTableBody');
+        tbody.innerHTML = '';
+        const stats = students.map(student => {
+            const studentRecords = records.filter(r => r.studentId === student.id);
+            return {
+                id: student.id,
+                name: student.name,
+                part: studentRecords.filter(r => r.category === 'Participation').length,
+                q: studentRecords.filter(r => r.type === 'Q').length,
+                c: studentRecords.filter(r => r.type === 'C').length,
+                r: studentRecords.filter(r => r.type === 'R').length,
+                total: studentRecords.length
+            };
+        });
+        stats.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${s.id}</td><td>${s.name}</td><td>${s.part}</td><td>${s.q}</td><td>${s.c}</td><td>${s.r}</td><td><strong>${s.total}</strong></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderHistoryTable() {
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = '';
+        
+        // Clone and sort records (Newest first)
+        const sortedRecords = [...records].sort((a, b) => b.id - a.id);
+
+        if (sortedRecords.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">目前沒有紀錄</td></tr>';
+            return;
+        }
+
+        sortedRecords.forEach(r => {
+            // Find current name in case student list changed, fallback to stored name if available, else ID
+            const student = students.find(s => s.id === r.studentId);
+            const name = student ? student.name : (r.studentName || r.studentId);
+            
+            const tr = document.createElement('tr');
+            const catDisplay = r.category === 'Participation' ? '課堂表現' : '預習功課';
+            
+            tr.innerHTML = `
+                <td>${r.date}</td>
+                <td>${r.studentId}</td>
+                <td>${name}</td>
+                <td>${catDisplay}</td>
+                <td><span class="badge">${r.type}</span></td>
+                <td><button class="action-btn btn-delete" onclick="deleteRecord(${r.id})">🗑️ 刪除</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- Utilities ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+        
+        if (tabName === 'record') document.getElementById('record-panel').classList.add('active');
+        else if (tabName === 'history') {
+            document.getElementById('history-panel').classList.add('active');
+            renderHistoryTable();
+        }
+        else if (tabName === 'stats') {
+            document.getElementById('stats-panel').classList.add('active');
+            renderStatsTable();
+        }
+        else document.getElementById('settings-panel').classList.add('active');
+    }
+
+    function showToast(message) {
+        const x = document.getElementById("toast");
+        x.innerText = message;
+        x.className = "show";
+        setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+    }
+
+    function exportCSV() {
+        const csvRows = [];
+        csvRows.push(['Student ID', 'Name', 'Class Participation', 'Pre-Task Q', 'Pre-Task C', 'Pre-Task R', 'Total']);
+        students.forEach(student => {
+            const studentRecords = records.filter(r => r.studentId === student.id);
+            const part = studentRecords.filter(r => r.category === 'Participation').length;
+            const q = studentRecords.filter(r => r.type === 'Q').length;
+            const c = studentRecords.filter(r => r.type === 'C').length;
+            const r = studentRecords.filter(r => r.type === 'R').length;
+            csvRows.push([student.id, student.name, part, q, c, r, studentRecords.length]);
+        });
+        const csvContent = "\uFEFF" + csvRows.map(e => e.join(",")).join("\n");
+        const link = document.createElement("a");
+        link.href = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+        link.download = "class_performance_stats.csv";
+        document.body.appendChild(link);
+        link.click();
+    }
+
+    function clearAllData() {
+        if(confirm("確定要清除所有紀錄嗎？這將無法復原。")) {
+            records = [];
+            localStorage.setItem('uni_tracker_records', JSON.stringify(records));
+            alert("紀錄已清除。");
+            renderStatsTable();
+            renderHistoryTable();
+        }
+    }
+
+    function sortTable(n) {
+      var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+      table = document.querySelector("#stats-panel table");
+      switching = true;
+      dir = "asc"; 
+      while (switching) {
+        switching = false;
+        rows = table.rows;
+        for (i = 1; i < (rows.length - 1); i++) {
+          shouldSwitch = false;
+          x = rows[i].getElementsByTagName("TD")[n];
+          y = rows[i + 1].getElementsByTagName("TD")[n];
+          let xVal = isNaN(parseInt(x.innerHTML)) ? x.innerHTML.toLowerCase() : parseInt(x.innerHTML);
+          let yVal = isNaN(parseInt(y.innerHTML)) ? y.innerHTML.toLowerCase() : parseInt(y.innerHTML);
+          if (dir == "asc") { if (xVal > yVal) { shouldSwitch = true; break; } } 
+          else if (dir == "desc") { if (xVal < yVal) { shouldSwitch = true; break; } }
+        }
+        if (shouldSwitch) {
+          rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+          switching = true;
+          switchcount ++;      
+        } else {
+          if (switchcount == 0 && dir == "asc") { dir = "desc"; switching = true; }
+        }
+      }
+    }
+</script>
+
+</body>
+</html>
